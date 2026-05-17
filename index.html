@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
+        
         /* 새로 추가된 항목 반짝임 효과 */
         @keyframes highlight {
             0% { background-color: #E0F2FE; transform: scale(1.02); }
@@ -42,9 +43,10 @@
         // 여기에 앱스 스크립트 배포 URL을 입력하세요!
         // (교사용 URL과 동일합니다)
         // ==========================================
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxpMCgWnr3CNn09b4oGPMEn2Ngp0-mWiQ3XdopHmB-ww2qLhoI-h_PvGMnK2vdibsKY/exec"; 
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwlbQ7WHe3wu5SwGYzlogliTMULV1wMzTn0DA55-9Q-4njTwKVWqeRdeB0kG3ab-Qz7/exec"; 
         
         let previousCallsJson = "";
+        let errorCount = 0;
 
         async function fetchCallData() {
             if(WEB_APP_URL.includes("여기에")) return;
@@ -52,6 +54,7 @@
             try {
                 const res = await fetch(`${WEB_APP_URL}?action=getData`);
                 const data = await res.json();
+                errorCount = 0; // 성공시 에러카운트 초기화
                 
                 document.getElementById('appTitle').innerText = `${data.schoolName} 학생 호출 현황판`;
                 document.title = `${data.schoolName} 호출 현황`;
@@ -65,31 +68,21 @@
                 }
             } catch (error) {
                 console.error("데이터 갱신 오류:", error);
-                document.getElementById('recentCallsList').innerHTML = `
-                    <div class="col-span-full text-center py-12 bg-red-50 rounded-3xl border-2 border-red-200">
-                        <p class="text-red-600 text-3xl font-black mb-4">⚠️ 통신 차단됨 (Failed to fetch)</p>
-                        <div class="text-gray-700 text-left inline-block max-w-2xl text-lg space-y-3 bg-white p-6 rounded-2xl shadow-sm">
-                            <p class="font-bold">구글 서버(앱스 스크립트) 접근 권한이 없어 통신이 차단되었습니다.</p>
-                            <hr class="border-gray-200 my-2">
-                            <p class="text-blue-600 font-bold">👉 이렇게 해결하세요:</p>
-                            <ol class="list-decimal pl-6 space-y-2 font-medium">
-                                <li>구글 스프레드시트에서 <b>[확장 프로그램] > [Apps Script]</b>로 이동</li>
-                                <li>우측 상단 <b>[배포] > [새 배포]</b> 클릭 (기존 배포 관리가 아닌 <b>반드시 새 배포</b>)</li>
-                                <li>설정(톱니바퀴)에서 <b>웹 앱</b> 선택</li>
-                            <li>'실행하는 사용자'는 <b>나</b> 선택</li>
-                            <li><span class="bg-yellow-200 text-red-600 font-bold px-1 rounded">'액세스 권한이 있는 사용자'를 반드시 '모든 사용자(Anyone)'로 변경</span></li>
-                            <li>[배포] 클릭 후 새로 생성된 <b>웹앱 URL</b>을 복사하여 HTML 코드에 다시 붙여넣기</li>
-                        </ol>
-                        <button onclick="fetchCallData()" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-xl transition-colors shadow-md">
-                            🔄 설정 변경 후 다시 연결 시도
-                        </button>
-                    </div>
-                </div>
-            `;
+                errorCount++;
+                
+                // 에러가 여러 번 반복되면 에러 메시지 표시
+                if(errorCount === 3 && previousCallsJson === "") {
+                    document.getElementById('recentCallsList').innerHTML = `
+                        <div class="col-span-full text-center py-20">
+                            <h3 class="text-red-500 text-3xl font-bold mb-4">⚠️ 데이터를 불러올 수 없습니다.</h3>
+                            <p class="text-gray-500 text-lg">앱스 스크립트 배포 설정에서 접근 권한이 <b>'모든 사용자(Anyone)'</b>로 되어 있는지 확인해주세요.</p>
+                        </div>
+                    `;
+                }
+            }
         }
-    }
 
-    function renderCards(calls, highlightTop) {
+        function renderCards(calls, highlightTop) {
             const list = document.getElementById('recentCallsList');
             list.innerHTML = "";
 
@@ -101,8 +94,13 @@
             calls.forEach((call, index) => {
                 const isNew = highlightTop && index === 0;
                 const card = document.createElement('div');
-                card.className = `bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-8 border-t-8 ${isNew ? 'border-red-500 new-item' : 'border-blue-400'} flex flex-col justify-between`;
+                card.className = `bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-8 border-t-8 ${isNew ? 'border-red-500 new-item' : 'border-blue-400'} flex flex-col justify-between h-full`;
                 
+                // 학년반 정보와 이름 분리 (예: "1-1 홍길동")
+                const nameParts = call.student.split(' ');
+                const studentName = nameParts.pop(); // 마지막 단어 (이름)
+                const className = nameParts.join(' '); // 나머지 (학년반)
+
                 card.innerHTML = `
                     <div>
                         <div class="flex justify-between items-start mb-6">
@@ -113,12 +111,12 @@
                                 ${call.teacher} 선생님
                             </span>
                         </div>
-                        <h2 class="text-4xl font-black text-gray-900 mb-2">${call.student.split(' ').pop()}</h2>
-                        <h3 class="text-xl font-bold text-gray-500">${call.student.split(' ').slice(0, -1).join(' ')}</h3>
+                        <h2 class="text-4xl font-black text-gray-900 mb-2">${studentName}</h2>
+                        <h3 class="text-xl font-bold text-gray-500">${className}</h3>
                     </div>
                     
                     <div class="mt-8 pt-6 border-t border-gray-100">
-                        <p class="text-2xl font-bold text-blue-600">💬 "${call.reason}"</p>
+                        <p class="text-2xl font-bold text-blue-600 break-keep">💬 "${call.reason}"</p>
                     </div>
                 `;
                 list.appendChild(card);
@@ -130,7 +128,12 @@
             fetchCallData();
             setInterval(fetchCallData, 3000); 
         } else {
-            document.getElementById('recentCallsList').innerHTML = `<div class="col-span-full text-center text-red-500 py-20 text-2xl font-bold">⚠️ 소스코드에서 웹앱 URL을 먼저 입력해주세요!</div>`;
+            document.getElementById('recentCallsList').innerHTML = `
+                <div class="col-span-full text-center py-20">
+                    <h3 class="text-red-500 text-3xl font-bold mb-4">⚠️ 설정 필요</h3>
+                    <p class="text-gray-500 text-lg">소스코드에서 <b>WEB_APP_URL</b>을 먼저 입력해주세요!</p>
+                </div>
+            `;
         }
     </script>
 </body>
