@@ -106,7 +106,7 @@
         // ==========================================
         // 🚨 앱스 스크립트 '새 배포' 후 받은 URL로 다시 변경해 주세요!
         // ==========================================
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwmnEPCMydwGB84xgeqBEZ6iU1nBvTu6gd9EcLOq908z4Tl7JREeqA4AltqxZ8pKQrr/exec"; 
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwg9dO9leTiqGZ2w53Xn9kvoRFPUb9zoXtcdr1vai92ekZ7nslb0fCh5kmYeUF7ZRTF/exec"; 
 
         let selectedClass = "";
         let isMonitoring = false;
@@ -129,8 +129,16 @@
                 return;
             }
             try {
-                const res = await fetch(`${WEB_APP_URL}?action=getData`);
+                // 리다이렉트 옵션 추가 (구글 스크립트 통신 안정성 강화)
+                const res = await fetch(`${WEB_APP_URL}?action=getData`, { redirect: 'follow' });
+                if (!res.ok) throw new Error(`HTTP 상태 코드 에러: ${res.status}`);
+                
                 const data = await res.json();
+                
+                // 백엔드(앱스 스크립트)에서 자체 에러가 발생한 경우 처리
+                if (data.error) {
+                    throw new Error(`스프레드시트 에러: ${data.error}`);
+                }
                 
                 document.getElementById('appTitle').innerText = `${data.schoolName} 현황판`;
                 document.title = `${data.schoolName} 호출 현황`;
@@ -138,7 +146,7 @@
                 const cSelect = document.getElementById('classSelect');
 
                 // ⚠️ 데이터 검증 로직: 반 이름에 숫자가 아예 없다면(예: 김민준) 오류 감지 안내
-                let isWrongData = data.classes.length > 0 && !/\d/.test(data.classes[0]);
+                let isWrongData = data.classes && data.classes.length > 0 && !/\d/.test(data.classes[0]);
                 if (isWrongData) {
                     document.getElementById('warningArea').innerHTML = `
                         <div class="bg-red-100 border-2 border-red-300 text-red-700 font-bold p-3 rounded-xl mb-4 text-sm">
@@ -154,7 +162,26 @@
                 document.getElementById('setupForm').classList.remove('hidden');
 
             } catch (error) {
-                document.getElementById('loadingSetup').innerHTML = `<span class="text-red-500">데이터 로드 실패. 관리자에게 문의하세요.</span>`;
+                // 어떤 에러인지 화면에 아주 상세하게 출력해줍니다!
+                const isSandbox = window.location.href.startsWith('blob:') || window.self !== window.top;
+                let errorHtml = `<div class="text-red-600 font-bold mb-2 text-xl">데이터 로드 실패</div>
+                                 <div class="text-sm text-red-500 mb-4 text-left bg-red-50 p-2 rounded">${error.message}</div>`;
+                
+                if (isSandbox) {
+                    errorHtml += `<div class="bg-white p-4 rounded-lg border-2 border-red-300 text-sm text-gray-800 text-left shadow-md">
+                        🚨 <b>통신 차단됨 (미리보기 환경)</b><br>
+                        현재 보고 계신 우측 화면(미리보기 샌드박스)에서는 보안상 구글 서버와 통신할 수 없습니다.<br><br>
+                        👉 <b>해결 방법:</b> 이 코드를 복사하여 바탕화면에 <b>student_app.html 파일로 저장</b>한 뒤, 크롬 등 인터넷 브라우저에서 직접 더블클릭하여 열어주세요.
+                    </div>`;
+                } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorHtml += `<div class="bg-white p-4 rounded-lg border-2 border-red-300 text-sm text-gray-800 text-left shadow-md">
+                        🚨 <b>접근 권한 차단됨 (CORS 에러)</b><br>
+                        구글 앱스 스크립트 배포 시 권한 설정이 잘못되었습니다.<br><br>
+                        👉 <b>해결 방법:</b> 앱스 스크립트에서 <b>[새 배포]</b>를 다시 누르고, <b>'액세스 권한이 있는 사용자'</b>를 반드시 <b>'모든 사용자(Anyone)'</b>로 변경하여 다시 배포한 새 URL을 적용하세요.
+                    </div>`;
+                }
+                
+                document.getElementById('loadingSetup').innerHTML = errorHtml;
             }
         }
 
@@ -192,8 +219,10 @@
             if (!isMonitoring) return;
 
             try {
-                const res = await fetch(`${WEB_APP_URL}?action=getData`);
+                const res = await fetch(`${WEB_APP_URL}?action=getData`, { redirect: 'follow' });
                 const data = await res.json();
+                
+                if (data.error) return; // 백엔드 에러 시 무시하고 다음 주기에 재시도
                 
                 // 해당 반의 호출인지 검사
                 // call.student 형태가 "1-1 홍길동" 형태이므로 selectedClass("1-1")로 시작하는지 확인
