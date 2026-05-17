@@ -47,6 +47,9 @@
             </div>
 
             <div id="setupForm" class="hidden space-y-6">
+                <!-- 경고 메시지 출력 영역 -->
+                <div id="warningArea"></div>
+
                 <select id="classSelect" class="w-full p-4 rounded-2xl border-2 border-blue-100 bg-blue-50 focus:ring-4 focus:ring-blue-200 text-gray-800 font-bold text-xl text-center cursor-pointer appearance-none">
                     <option value="">우리 반 선택하기</option>
                 </select>
@@ -101,9 +104,9 @@
 
     <script>
         // ==========================================
-        // 여기에 앱스 스크립트 배포 URL을 입력하세요!
+        // 🚨 앱스 스크립트 '새 배포' 후 받은 URL로 다시 변경해 주세요!
         // ==========================================
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyqo0MToVmfvPkzyNgsRGG6nv4p4_IVmyD_4OzL_EPn-D8N7v0ZcbXxB_kYAFyH4SAN/exec"; 
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwmnEPCMydwGB84xgeqBEZ6iU1nBvTu6gd9EcLOq908z4Tl7JREeqA4AltqxZ8pKQrr/exec"; 
 
         let selectedClass = "";
         let isMonitoring = false;
@@ -133,6 +136,16 @@
                 document.title = `${data.schoolName} 호출 현황`;
 
                 const cSelect = document.getElementById('classSelect');
+
+                // ⚠️ 데이터 검증 로직: 반 이름에 숫자가 아예 없다면(예: 김민준) 오류 감지 안내
+                let isWrongData = data.classes.length > 0 && !/\d/.test(data.classes[0]);
+                if (isWrongData) {
+                    document.getElementById('warningArea').innerHTML = `
+                        <div class="bg-red-100 border-2 border-red-300 text-red-700 font-bold p-3 rounded-xl mb-4 text-sm">
+                            ⚠️ 앱스 스크립트 버전 오류 감지!<br>반 이름 대신 학생 이름이 불려왔습니다.<br>구글 앱스 스크립트를 최신 코드로 <br>반드시 <b>'새 배포'</b> 해주세요.
+                        </div>`;
+                }
+
                 data.classes.forEach(c => {
                     cSelect.add(new Option(formatClassName(c), c));
                 });
