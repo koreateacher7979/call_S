@@ -39,23 +39,18 @@
 
     <script>
         // ==========================================
-        // 앱스 스크립트 배포 URL (정확한 URL 입력 필수)
+        // 여기에 앱스 스크립트 배포 URL을 입력하세요!
+        // (교사용 URL과 동일합니다)
         // ==========================================
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyqo0MToVmfvPkzyNgsRGG6nv4p4_IVmyD_4OzL_EPn-D8N7v0ZcbXxB_kYAFyH4SAN/exec"; 
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxpMCgWnr3CNn09b4oGPMEn2Ngp0-mWiQ3XdopHmB-ww2qLhoI-h_PvGMnK2vdibsKY/exec"; 
         
         let previousCallsJson = "";
 
         async function fetchCallData() {
-            if(WEB_APP_URL.includes("여기에")) {
-                console.warn("웹앱 URL이 설정되지 않았습니다.");
-                return;
-            }
+            if(WEB_APP_URL.includes("여기에")) return;
 
             try {
                 const res = await fetch(`${WEB_APP_URL}?action=getData`);
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
                 const data = await res.json();
                 
                 document.getElementById('appTitle').innerText = `${data.schoolName} 학생 호출 현황판`;
@@ -70,11 +65,31 @@
                 }
             } catch (error) {
                 console.error("데이터 갱신 오류:", error);
-                document.getElementById('recentCallsList').innerHTML = `<div class="col-span-full text-center text-red-500 py-20 text-2xl font-bold">통신 오류가 발생했습니다. URL 및 권한 설정을 확인해주세요.</div>`;
-            }
+                document.getElementById('recentCallsList').innerHTML = `
+                    <div class="col-span-full text-center py-12 bg-red-50 rounded-3xl border-2 border-red-200">
+                        <p class="text-red-600 text-3xl font-black mb-4">⚠️ 통신 차단됨 (Failed to fetch)</p>
+                        <div class="text-gray-700 text-left inline-block max-w-2xl text-lg space-y-3 bg-white p-6 rounded-2xl shadow-sm">
+                            <p class="font-bold">구글 서버(앱스 스크립트) 접근 권한이 없어 통신이 차단되었습니다.</p>
+                            <hr class="border-gray-200 my-2">
+                            <p class="text-blue-600 font-bold">👉 이렇게 해결하세요:</p>
+                            <ol class="list-decimal pl-6 space-y-2 font-medium">
+                                <li>구글 스프레드시트에서 <b>[확장 프로그램] > [Apps Script]</b>로 이동</li>
+                                <li>우측 상단 <b>[배포] > [새 배포]</b> 클릭 (기존 배포 관리가 아닌 <b>반드시 새 배포</b>)</li>
+                                <li>설정(톱니바퀴)에서 <b>웹 앱</b> 선택</li>
+                            <li>'실행하는 사용자'는 <b>나</b> 선택</li>
+                            <li><span class="bg-yellow-200 text-red-600 font-bold px-1 rounded">'액세스 권한이 있는 사용자'를 반드시 '모든 사용자(Anyone)'로 변경</span></li>
+                            <li>[배포] 클릭 후 새로 생성된 <b>웹앱 URL</b>을 복사하여 HTML 코드에 다시 붙여넣기</li>
+                        </ol>
+                        <button onclick="fetchCallData()" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-xl transition-colors shadow-md">
+                            🔄 설정 변경 후 다시 연결 시도
+                        </button>
+                    </div>
+                </div>
+            `;
         }
+    }
 
-        function renderCards(calls, highlightTop) {
+    function renderCards(calls, highlightTop) {
             const list = document.getElementById('recentCallsList');
             list.innerHTML = "";
 
